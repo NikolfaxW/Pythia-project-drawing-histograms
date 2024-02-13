@@ -5,6 +5,8 @@
 # --with-fastjet3-config=/home/nikolfax/fastjet-install/bin/fastjet-config
 # --with-root
 
+#now I save my credenitals
+
 # Install directory prefixes.
 PREFIX_BIN=/home/nikolfax/pythia8310/bin
 PREFIX_INCLUDE=/home/nikolfax/pythia8310/include
