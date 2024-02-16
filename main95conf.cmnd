@@ -1,0 +1,17 @@
+!Needed params
+!energy in the center of mass 5 TeV
+Beam:eCM = 5000
+!HardQCD is off
+HardQCD:all = off
+!Phase space minimum pT is set to 20
+PhaseSpace:pTHatMin = 20
+!Set the number of events
+Main:numberOfEvents = 100000
+
+
+!deafult main95 params
+HiggsSM:ffbar2HW = on
+25:onMode = off
+25:onIfAny = 5
+24:onMode = off
+24:onIfAny = 1 2 3 4 5

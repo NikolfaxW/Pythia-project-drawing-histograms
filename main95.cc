@@ -47,7 +47,7 @@ using namespace Pythia8;
 //==========================================================================
 
 // Method to print descriptive text to the canvas.
-// (x, y) are relative coordinates (NDC).
+// (x, y) are relative coordinates (NDC).  //NDC?
 
 void drawText(double x, double y, TString txt, int align= 11,
   double tsize= 0.032) {
@@ -124,113 +124,219 @@ void drawMarker(double x, double y, int style, int col, double size= 1.0) {
 // Example main program to vizualize jet algorithms.
 
 int main() {
+
+	// Adjust ROOTs default style.
+	gStyle->SetOptTitle(0);
+	gStyle->SetOptStat(0);
+	gStyle->SetPadTickX(1);
+	// Tick marks on top and RHS.
+	gStyle->SetPadTickY(1);
+	gStyle->SetTickLength(0.02, "x");
+	gStyle->SetTickLength(0.015, "y");
+	// Good with SetMax higher. 57, 91 and 104 also OK.
+	gStyle->SetPalette(55);
+
+	// Define the canvas.
+	auto can = new TCanvas();
+	double x = 0.06, y = 0.96;
+	// Left-right-bottom-top
+	can->SetMargin(x, 0.02, 0.08, 0.06);
+
+	// Define the energy-flow histogram.
+	int NyBins = 400/2, NphiBins = 314/2;
+	double yMax = 4, phiMax = TMath::Pi();
+	auto pTflow = new TH2D("",
+    ";Rapidity #it{y};Azimuth #it{#phi};Jet #it{p}_{T} [GeV]",
+    NyBins, -yMax, yMax, NphiBins, -phiMax, phiMax);
+	pTflow->GetYaxis()->SetTitleOffset(0.8);
+	pTflow->GetZaxis()->SetTitleOffset(1.1);
+
+	// Name of output pdf file + open canvas for printing pages to it.
+	TString pdf = "main95.pdf";
+	can->Print(pdf + "[");
+
+	// Generator. Process selection. LHC initialization.
 	Pythia pythia;
-	Event& event = pythia.event;
+	// Description of the process (using ROOT's TLatex notation).
+	TString desc = "#it{pp} #rightarrow #it{WH} #rightarrow"
+    " #it{q#bar{q}b#bar{b}},  #sqrt{#it{s}} = 13.6 TeV";
 	pythia.readFile("main95conf.cmnd");
-	
-	
-	
-	
-	
-	
-	
-	// Extract settings to be used in the main program.
-  int nEvent = pythia.mode("Main:numberOfEvents");
-  int nAbort = pythia.mode("Main:timesAllowErrors");
 
-  // Initialize.
-  pythia.init();
+	
+	// Force H->bb decays and hadronic W decays.
 
-  // Book histograms.
-  Hist pThard("process pT scale", 100, 0., 500.);
-  Hist nFinal("final particle multiplicity", 100, -0.5, 1599.5);
-  Hist nCharged("charged particle multiplicity", 100, -0.5, 799.5);
-  Hist dndy("dn/dy for charged particles", 100, -10., 10.);
-  Hist dndeta("dn/d(eta) for charged particles", 100, -10., 10.);
-  Hist dndpT("dn/dpT for charged particles", 100, 0., 10.);
-  Hist epCons("deviation from energy-momentum conservation", 100, 0., 1e-6);
+	pythia.init();
 
-  // Begin event loop.
-  int iAbort = 0;
-  for (int iEvent = 0; iEvent < nEvent; ++iEvent) {
+	// Pileup particles
+	Pythia pythiaPU;
+	pythiaPU.readFile("main95conf2.cmnd");
+	
+  if (mu > 0) pythiaPU.init();
 
-    // Generate events. Quit if many failures.
-    if (!pythia.next()) {
-      if (++iAbort < nAbort) continue;
-      cout << " Event generation aborted prematurely, owing to error!\n";
-      break;
+  // Setup fasjet. Create map with (key, value) = (descriptive text, jetDef).
+  //k_t and anti k_t needed
+  double R = 0.4; //Define radius used in algorithms
+  
+  std::map<TString, fastjet::JetDefinition> jetDefs;
+  jetDefs["Anti-#it{k_{t}} jets, #it{R} = 0.4"] = fastjet::JetDefinition(
+    fastjet::antikt_algorithm, R, fastjet::E_scheme, fastjet::Best); // anti k_t
+	
+  jetDefs["#it{k_{t}} jets, #it{R} = 0.4"] = fastjet::JetDefinition(
+    fastjet::kt_algorithm, R, fastjet::E_scheme, fastjet::Best); //k_t
+	
+
+  auto &event = pythia.event;
+  for (int iEvent = 0; iEvent < 100; ++iEvent) {
+    if (!pythia.next()) continue;
+
+    // Identify particles. Jets are built from all stable particles after
+    // hadronization (particle-level jets).
+    std::vector<Particle> VH, ptcls_hs, ptcls_pu;
+    std::vector<fastjet::PseudoJet> stbl_ptcls;
+    for (int i = 0; i < event.size(); ++i) {
+		// params for particle selection
+		//p.isFinal() && p.status() >= 51 && p.status() <= 59 ???  
+		
+		
+      auto &p = event[i];
+      if (p.isResonance() && p.status() == -62) VH.push_back(p);
+      if (not p.isFinal()) continue;
+      stbl_ptcls.push_back(fastjet::PseudoJet(p.px(), p.py(), p.pz(), p.e()));
+      ptcls_hs.push_back(p);
     }
 
-    // Fill hard scale of event.
-    pThard.fill( pythia.info.pTHat() );
+    // Should not happen!
+    if (VH.size()!= 2) continue;
 
-    // Loop over final particles in the event.
-    int  nFin = 0;
-    int  nChg = 0;
-    Vec4 pSum;
-    for (int i = 0; i < event.size(); ++i) if (event[i].isFinal()) {
+    // Want to show an example where one of the boson is boosted and hence
+    // contained within a R=1.0 jet, and one is not.
+    // The diboson system should also be fairly central.
+    auto pVH = VH[0].p() + VH[1].p();
+    double DR1 = event.RRapPhi(VH[0].daughter1(), VH[0].daughter2());
+    double DR2 = event.RRapPhi(VH[1].daughter1(), VH[1].daughter2());
+    // Central system.
+    if ( std::abs(pVH.rap())>0.5 || std::abs(VH[0].phi())>2.5 ||
+      std::abs(VH[1].phi())>2.5 ) continue;
+    // One contained, one resolved.
+    if ( (DR1<1.0 && DR2<1.0) || (DR1>1.0 && DR2>1.0) ) continue;
 
-       // Analyze all particles.
-      nFin++;
-      pSum += event[i].p();
+    // Add in ghost particles on the grid defined by the pTflow histogram.
+    fastjet::PseudoJet ghost;
+    double pTghost = 1e-100;
+    for (int iy= 1;iy<= NyBins; ++iy) {
+      for (int iphi= 1;iphi<= NphiBins; ++iphi) {
+        double y   = pTflow->GetXaxis()->GetBinCenter(iy);
+        double phi = pTflow->GetYaxis()->GetBinCenter(iphi);
+        ghost.reset_momentum_PtYPhiM(pTghost, y, phi, 0);
+        stbl_ptcls.push_back(ghost);
+      }
+    }
 
-      // Analyze charged particles and fill histograms.
-      if (event[i].isCharged()) {
-        ++nChg;
-        dndy.fill( event[i].y() );
-        dndeta.fill( event[i].eta() );
-        dndpT.fill( event[i].pT() );
+    // Add in pileup!
+    int n_inel = gRandom->Poisson(mu);
+    printf("Overlaying particles from %i pileup interactions!\n", n_inel);
+    for (int i_pu= 0; i_pu<n_inel; ++i_pu) {
+      if (!pythiaPU.next()) continue;
+      for (int i = 0; i < pythiaPU.event.size(); ++i) {
+        auto &p = pythiaPU.event[i];
+        if (not p.isFinal()) continue;
+        stbl_ptcls.push_back(
+          fastjet::PseudoJet(p.px(), p.py(), p.pz(), p.e()));
+        ptcls_pu.push_back(p);
+      }
+    }
+
+    can->SetLogz();
+    can->SetRightMargin(0.13);
+    bool first = true;
+	
+	
+	//Here it goes through the deffined algorithms 
+    for (auto jetDef:jetDefs) {
+      fastjet::ClusterSequence clustSeq(stbl_ptcls, jetDef.second);
+      auto jets = sorted_by_pt( clustSeq.inclusive_jets(pTmin_jet) );
+      // Fill the pT flow.
+      pTflow->Reset();
+      // For each jet:
+      for (auto jet:jets) {
+        // For each particle:
+        for (auto c:jet.constituents()) {
+          if (c.pt() > 1e-50) continue;
+          pTflow->Fill(c.rap(), c.phi_std(), jet.pt());
+        }
+      }
+      pTflow->GetZaxis()->SetRangeUser(pTmin_jet/4,
+        pTflow->GetBinContent(pTflow->GetMaximumBin())*4);
+      // pTflow->GetZaxis()->SetRangeUser(8, 1100);
+      // pTflow->GetZaxis()->SetMoreLogLabels();
+      pTflow->Draw("colz");
+
+      for (auto &p:ptcls_pu) {
+        if ( std::abs(p.y()) < yMax && p.pT() > pTmin_hadron ) {
+          drawParticleMarker(p, p.charge()?24:25, colPU, 0.4);
+        }
       }
 
-    // End of particle loop. Fill global properties.
-    }
-    nFinal.fill( nFin );
-    nCharged.fill( nChg );
-    pSum /= event[0].e();
-    double epDev = abs(pSum.e() - 1.) + abs(pSum.px()) + abs(pSum.py())
-      + abs(pSum.pz());
-    epCons.fill(epDev);
+      // Draw the stable particles.
+      for (auto &p:ptcls_hs) {
+        if ( std::abs(p.y()) < yMax && p.pT() > pTmin_hadron ) {
+          if (p.charge()>0) {
+            drawParticleMarker(p, 5, colPos, 0.8);
+          } else if (p.charge()<0) {
+            drawParticleMarker(p, 5, colNeg, 0.8);
+          } else {
+            drawParticleMarker(p, 21, colNeut, 0.4);
+            drawParticleMarker(p, 5, colNeut, 0.8);
+          }
+        }
+      }
 
-  // End of event loop.
+      // Draw the W and H.
+      for (auto p:VH) {
+        auto d1 = pythia.event[p.daughter1()];
+        auto d2 = pythia.event[p.daughter2()];
+        drawParticleText(p);
+        drawParticleText(d1);
+        drawParticleText(d2);
+      }
+
+      drawText(x, y, desc);
+      drawText(0.87, y, jetDef.first +
+        Form(", #it{p}_{T} > %.0f GeV", pTmin_jet), 31);
+
+      // 'Hand-made' legend used to specific plot in the
+      // '50 years of Quantum Chromodynamics', EPJC.
+      if (first) {
+        drawLegendBox(0.66, 0.67, 0.85, 0.925);
+        drawText(0.715, 0.90, "Hard scatter", 12);
+        drawMarker(0.68, 0.90, 20, colHS, 0.8);
+        drawMarker(0.7, 0.90, 29, colHS, 1.2);
+
+        drawText(0.675, 0.85, "Stable particles", 12);
+        drawText(0.675, 0.824, "   +    #bf{#minus}    #scale[0.9]{neutral}",
+          12);
+        drawMarker(0.683, 0.82, 5, colPos, 0.8);
+        drawMarker(0.717, 0.82, 5, colNeg, 0.8);
+        drawMarker(0.75, 0.82, 21, colNeut, 0.4);
+        drawMarker(0.75, 0.82, 5, colNeut, 0.8);
+
+        drawText(0.675, 0.775, Form("Pileup  #it{#mu} = %.0f", mu), 12);
+        drawText(0.675, 0.745, "   #pm    #scale[0.9]{neutral}", 12);
+        drawMarker(0.683, 0.74, 24, colPU, 0.4);
+        drawMarker(0.717, 0.74, 25, colPU, 0.4);
+        drawText(0.70, 0.70, Form("#scale[0.8]{#it{p}_{T}^{ptcl} > %.1f GeV}",
+            pTmin_hadron), 12);
+      }
+      first = false;
+      can->Print(pdf);
+    }
+    break; // remove this to draw several events
   }
 
-  // Final statistics. Normalize and output histograms.
-  pythia.stat();
-  double sigma = pythia.info.sigmaGen();
-  pThard   *= sigma * 1e6 * 0.2 / nEvent;
-  nFinal   *= 1. / (16. * nEvent);
-  nCharged *= 1. / (8. * nEvent);
-  dndy     *=  5. / nEvent;
-  dndeta   *=  5. / nEvent;
-  dndpT    *= 10. / nEvent;
-  cout << pThard << nFinal << nCharged << dndy << dndeta << dndpT << epCons;
-
-  // Write Python code that can generate a PDF file with the spectra.
-  // Assuming you have Python installed on your platform, do as follows.
-  // After the program has run, type "python main03plot.py" (without the " ")
-  // in a terminal window, and open "out03plot.pdf" in a PDF viewer.
-  // Colours and other choices can be omitted, but are shown as illustration.
-  HistPlot hpl("main03plot");
-  hpl.plotFrame("out03plot", pThard, "$p_{\\perp}$ scale of hard interaction",
-    "$p_{\\perp}$ (GeV)",
-    "$\\mathrm{d}\\sigma/\\mathrm{d}p_{\\perp}$ (nb/GeV)",
-    "h", "$p_{\\perp}$ of $2 \\to 2$ process", true);
-  hpl.frame("", "Total and charged particle multiplicities",
-    "$n$", "$\\mathrm{d}P/\\mathrm{d}n$");
-  hpl.add( nFinal, "h,royalblue", "total");
-  hpl.add( nCharged, "h,orange", "charged (even only!)");
-  hpl.plot();
-  hpl.frame( "", "Charged (pseudo)rapidity distribution", "$y$ or $\\eta$",
-    "$\\mathrm{d}n_{\\mathrm{charged}}/\\mathrm{d}(y/\\eta)$");
-  hpl.add( dndy, "-", "$\\mathrm{d}n_{\\mathrm{charged}}/\\mathrm{d}y$");
-  hpl.add( dndeta, "--,magenta",
-    "$\\mathrm{d}n_{\\mathrm{charged}}/\\mathrm{d}\\eta$");
-  hpl.plot();
-  hpl.plotFrame("", dndpT, "Charged $p_{\\perp}$ spectrum",
-    "$p_{\\perp}$ (GeV)", "$\\mathrm{d}n_{\\mathrm{charged}}/\\mathrm{d}"
-    "p_{\\perp}$ (GeV$^{-1}$)", "", "charged", true);
+  // Close the pdf
+  can->Print(pdf + "]");
+  printf("Produced %s\n\n", pdf.Data());
 
   // Done.
-
-	return 0;
+  return 0;
 }
