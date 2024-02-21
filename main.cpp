@@ -23,6 +23,9 @@
 #include "TStyle.h"
 #include "fastjet/PseudoJet.hh"
 #include "fastjet/ClusterSequence.hh"
+#include "drawF.h"
+
+
 
 //==========================================================================
 
@@ -30,96 +33,23 @@
 
 // Jet and hadron pT thresholds.
 // Will only show particles with pT > pTmin and |y| < yMax.
-double pTmin_jet = 25;
-double pTmin_hadron = 1;
+double pTmin_jet = 25; //ok
+double pTmin_hadron = 1;//ok
 double yMax = 4;
 
 // Amount of pileup. Average number of inelastic pp collisions per event
 // (=bunch-crossing). Set to zero to turn off pileup.
-double mu = 60;
+double mu = 60;//ok
 
 // Style format. Colours used by various drawn markers.
-int colHS = kBlack, colPos = kRed, colNeg = kBlue;
+int colHS = kBlack, colPos = kRed, colNeg = kBlue; //ok
 int colNeut = kGreen + 3, colPU = kGray + 1;
 
-using namespace Pythia8;
 
 //==========================================================================
 
-// Method to print descriptive text to the canvas.
-// (x, y) are relative coordinates (NDC).
 
-void drawText(double x, double y, TString txt, int align= 11,
-              double tsize= 0.032) {
-    static auto tex = new TLatex();
-    tex->SetTextAlign(align);
-    tex->SetTextSize(tsize);
-    tex->SetTextFont(42);
-    tex->SetNDC();
-    tex->DrawLatex(x, y, txt);
-}
 
-//==========================================================================
-
-// Text to draw a marker at the (y, phi) coordinates of a particle.
-// Absolute coordinates.
-
-void drawParticleMarker(const Particle &p, int style, int col,
-                        double size= 1.0) {
-    static auto m = new TMarker();
-    m->SetMarkerStyle(style);
-    m->SetMarkerSize(size);
-    m->SetMarkerColor(col);
-    m->DrawMarker(p.y(), p.phi());
-}
-
-//==========================================================================
-
-// Method to draw a marker+text of a particle.
-
-void drawParticleText(const Particle &p) {
-    // Draws a marker at (y, phi) of particle. Circle for parton, star
-    // for boson.
-    bool isParton =  (std::abs(p.id()) <= 5 || p.id() == 21);
-    int col = colHS;
-    drawParticleMarker( p, isParton?20:29, col, isParton?0.8:1.2);
-
-    // Format the name-string of the particle according to ROOT's TLatex.
-    // Print the text right under the marker.
-    TString name = p.name();
-    if (name.Contains("bar")) name = "#bar{" + name.ReplaceAll("bar", "") + "}";
-    name.ReplaceAll("+", "^{+}").ReplaceAll("-", "^{-}").ReplaceAll("h0", "H");
-    static auto tex = new TLatex();
-    tex->SetTextSize(0.03);
-    tex->SetTextFont(42);
-    tex->SetTextAlign(11);
-    tex->SetTextColor(col);
-    tex->DrawLatex(p.y() + 0.1, p.phi() - 0.1, "#it{" + name + "}");
-}
-
-//==========================================================================
-
-// Draws a box for text to appear.
-
-void drawLegendBox(double x1, double y1, double x2, double y2) {
-    static auto *box = new TPave(x1, y1, x2, y2, 1, "ndc");
-    box->SetFillColor(kWhite);
-    box->Draw();
-}
-
-//==========================================================================
-
-// Draw a marker for legend.
-
-void drawMarker(double x, double y, int style, int col, double size= 1.0) {
-    auto m = new TMarker(x, y, style);
-    m->SetMarkerSize(size);
-    m->SetMarkerColor(col);
-    m->SetNDC(true);
-    m->Draw();
-}
-
-//==========================================================================
 
 // Example main program to vizualize jet algorithms.
 
@@ -156,7 +86,7 @@ int main() {
     can->Print(pdf + "[");
 
     // Generator. Process selection. LHC initialization.
-    Pythia pythia;
+    Pythia8::Pythia pythia;
     // Description of the process (using ROOT's TLatex notation).
     TString desc = "#it{pp} #rightarrow #it{WH} #rightarrow"
                    " #it{q#bar{q}b#bar{b}},  #sqrt{#it{s}} = 13.6 TeV";
@@ -170,7 +100,7 @@ int main() {
     pythia.init();
 
     // Pileup particles
-    Pythia pythiaPU;
+    Pythia8::Pythia pythiaPU;
     pythiaPU.readString("Beams:eCM = 13600.");
     pythiaPU.readString("SoftQCD:inelastic = on");
     if (mu > 0) pythiaPU.init();
@@ -192,7 +122,7 @@ int main() {
 
         // Identify particles. Jets are built from all stable particles after
         // hadronization (particle-level jets).
-        std::vector<Particle> VH, ptcls_hs, ptcls_pu;
+        std::vector<Pythia8::Particle> VH, ptcls_hs, ptcls_pu;
         std::vector<fastjet::PseudoJet> stbl_ptcls;
         for (int i = 0; i < event.size(); ++i) {
             auto &p = event[i];
@@ -289,9 +219,9 @@ int main() {
             for (auto p:VH) {
                 auto d1 = pythia.event[p.daughter1()];
                 auto d2 = pythia.event[p.daughter2()];
-                drawParticleText(p);
-                drawParticleText(d1);
-                drawParticleText(d2);
+                drawParticleText(p, colHS);
+                drawParticleText(d1, colHS);
+                drawParticleText(d2, colHS);
             }
 
             drawText(x, y, desc);
