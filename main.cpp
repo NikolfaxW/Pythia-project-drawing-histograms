@@ -47,7 +47,9 @@ double mu = 60;//ok
 int colHS = kBlack, colPos = kRed, colNeg = kBlue; //ok
 int colNeut = kGreen + 3, colPU = kGray + 1;
 bool doAntik_t = true, dok_t = true, doCambridge_Aachen = false; //switch for algorithms
-double R = 0.4; // algorithm jet finding radius
+double R = 0.3; // algorithm jet finding radius
+double etaMax  = 1.0;    		// Pseudorapidity range of detector.
+
 
 
 //==========================================================================
@@ -125,6 +127,7 @@ int main() {
         std::vector<Pythia8::Particle> VH, ptcls_hs, ptcls_pu;
         std::vector<fastjet::PseudoJet> stbl_ptcls;
         for (int i = 0; i < event.size(); ++i) {
+            if (abs(pythia.event[i].eta()) > etaMax) continue; // eta test
             auto &p = event[i];
             if (p.isResonance() && p.status() == -62) VH.push_back(p);
             if (not p.isFinal()) continue;
