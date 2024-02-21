@@ -11,6 +11,8 @@
 // The produced figure is used in the article "50 years of Quantum
 // Chromodynamics" in celebration of the 50th anniversary of QCD (EPJC).
 
+#include <string>
+#include <iostream>
 #include "Pythia8/Pythia.h"
 #include "TCanvas.h"
 #include "TString.h"
@@ -44,6 +46,8 @@ double mu = 60;//ok
 // Style format. Colours used by various drawn markers.
 int colHS = kBlack, colPos = kRed, colNeg = kBlue; //ok
 int colNeut = kGreen + 3, colPU = kGray + 1;
+bool doAntik_t = true, dok_t = true, doCambridge_Aachen = false; //switch for algorithms
+double R = 0.4; // algorithm jet finding radius
 
 
 //==========================================================================
@@ -82,7 +86,7 @@ int main() {
     pTflow->GetZaxis()->SetTitleOffset(1.1);
 
     // Name of output pdf file + open canvas for printing pages to it.
-    TString pdf = "main95.pdf";
+    TString pdf = "result.pdf";
     can->Print(pdf + "[");
 
     // Generator. Process selection. LHC initialization.
@@ -90,34 +94,30 @@ int main() {
     // Description of the process (using ROOT's TLatex notation).
     TString desc = "#it{pp} #rightarrow #it{WH} #rightarrow"
                    " #it{q#bar{q}b#bar{b}},  #sqrt{#it{s}} = 13.6 TeV";
-    pythia.readString("Beams:eCM = 13600.");
-    pythia.readString("HiggsSM:ffbar2HW = on");
-    // Force H->bb decays and hadronic W decays.
-    pythia.readString("25:onMode = off");
-    pythia.readString("25:onIfAny = 5");
-    pythia.readString("24:onMode = off");
-    pythia.readString("24:onIfAny = 1 2 3 4 5");
+
+    pythia.readFile("../config1.cmnd");
     pythia.init();
+    int nEvent = pythia.mode("Main:numberOfEvents");
 
     // Pileup particles
     Pythia8::Pythia pythiaPU;
-    pythiaPU.readString("Beams:eCM = 13600.");
-    pythiaPU.readString("SoftQCD:inelastic = on");
+    pythiaPU.readFile("../config1.cmnd");
+
     if (mu > 0) pythiaPU.init();
 
     // Setup fasjet. Create map with (key, value) = (descriptive text, jetDef).
     std::map<TString, fastjet::JetDefinition> jetDefs;
-    jetDefs["Anti-#it{k_{t}} jets, #it{R} = 0.4"] = fastjet::JetDefinition(
-            fastjet::antikt_algorithm, 0.4, fastjet::E_scheme, fastjet::Best);
-    jetDefs["#it{k_{t}} jets, #it{R} = 0.4"] = fastjet::JetDefinition(
-            fastjet::kt_algorithm, 0.4, fastjet::E_scheme, fastjet::Best);
-    jetDefs["Cambridge-Aachen jets,  #it{R} = 0.4"] = fastjet::JetDefinition(
-            fastjet::cambridge_algorithm, 0.4, fastjet::E_scheme, fastjet::Best);
-    jetDefs["Anti-#it{k_{t}} jets, #it{R} = 1.0"] = fastjet::JetDefinition(
-            fastjet::antikt_algorithm, 1.0, fastjet::E_scheme, fastjet::Best);
+    if(doAntik_t)jetDefs["Anti-#it{k_{t}} jets, #it{R} = " + std::to_string(R)] = fastjet::JetDefinition(
+            fastjet::antikt_algorithm, R, fastjet::E_scheme, fastjet::Best);
+    if(dok_t)jetDefs["#it{k_{t}} jets, #it{R} = " + std::to_string(R)] = fastjet::JetDefinition(
+            fastjet::kt_algorithm, R, fastjet::E_scheme, fastjet::Best);
+    if(doCambridge_Aachen)jetDefs["Cambridge-Aachen jets,  #it{R} = 0.4"] = fastjet::JetDefinition(
+            fastjet::cambridge_algorithm, R, fastjet::E_scheme, fastjet::Best);
+
 
     auto &event = pythia.event;
-    for (int iEvent = 0; iEvent < 100; ++iEvent) {
+    for (int iEvent = 0; iEvent < nEvent; ++iEvent) {
+        if(iEvent%100==0) std::cout << "Working on event iEvent = " << iEvent << std::endl;
         if (!pythia.next()) continue;
 
         // Identify particles. Jets are built from all stable particles after
@@ -134,18 +134,18 @@ int main() {
 
         // Should not happen!
         if (VH.size()!= 2) continue;
-
+        /*
         // Want to show an example where one of the boson is boosted and hence
         // contained within a R=1.0 jet, and one is not.
         // The diboson system should also be fairly central.
         auto pVH = VH[0].p() + VH[1].p();
-        double DR1 = event.RRapPhi(VH[0].daughter1(), VH[0].daughter2());
-        double DR2 = event.RRapPhi(VH[1].daughter1(), VH[1].daughter2());
+        double DR1 = event.RRapPhi(VH[0].daughter1(), VH[0].daughter2());//!TODO
+        double DR2 = event.RRapPhi(VH[1].daughter1(), VH[1].daughter2());//!TODO
         // Central system.
         if ( std::abs(pVH.rap())>0.5 || std::abs(VH[0].phi())>2.5 ||
              std::abs(VH[1].phi())>2.5 ) continue;
         // One contained, one resolved.
-        if ( (DR1<1.0 && DR2<1.0) || (DR1>1.0 && DR2>1.0) ) continue;
+        if ( (DR1<1.0 && DR2<1.0) || (DR1>1.0 && DR2>1.0) ) continue;*/
 
         // Add in ghost particles on the grid defined by the pTflow histogram.
         fastjet::PseudoJet ghost;
@@ -254,7 +254,7 @@ int main() {
             first = false;
             can->Print(pdf);
         }
-        break; // remove this to draw several events
+        //break; //!TODO remove this to draw several events!
     }
 
     // Close the pdf
