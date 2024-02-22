@@ -1,6 +1,6 @@
 Main:numberOfEvents = 10000
 
-Beams:eCM = 5000000.
+Beams:eCM = 5000
 HardQCD:all = 0
 PhaseSpace:pTHatMin = 20
 
