@@ -13,6 +13,17 @@
 
 
 
+
+void setUpRootStyle(){
+    gStyle->SetOptTitle(0);
+    gStyle->SetOptStat(0);
+    gStyle->SetPadTickX(1);
+    gStyle->SetPadTickY(1);
+    gStyle->SetTickLength(0.02, "x");
+    gStyle->SetTickLength(0.015, "y");
+    gStyle->SetPalette(55);
+}
+
 void drawText(double x, double y, TString txt, int align,
               double tsize) {
     static auto tex = new TLatex();

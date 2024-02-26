@@ -26,7 +26,7 @@
 
 
 
-
+void setUpRootStyle();
 void drawText(double x, double y, TString txt, int align= 11, double tsize= 0.032);
 void drawParticleMarker(const Pythia8::Particle &p, int style, int col, double size= 1.0);
 void drawParticleText(const Pythia8::Particle &p, int colourHS);
