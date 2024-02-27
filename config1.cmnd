@@ -1,4 +1,4 @@
-Main:numberOfEvents = 100
+Main:numberOfEvents = 1
 Main:timesAllowErrors = 20
 
 
@@ -9,7 +9,7 @@ Next:numberShowEvent = 0
 
 
 
-Beams:eCM = 5000
+Beams:eCM = 5000000
 HardQCD:all = on
 PhaseSpace:pTHatMin = 20
 
