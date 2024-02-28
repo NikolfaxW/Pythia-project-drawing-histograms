@@ -23,9 +23,9 @@
 
 
 
-
-
-
+void drawParticles_histogram(std::vector<Pythia8::Particle> & particles_histogram);
+TH2D * createTH2D();
+void drawdrawLegend();
 void setUpRootStyle();
 void drawText(double x, double y, TString txt, int align= 11, double tsize= 0.032);
 void drawParticleMarker(const Pythia8::Particle &p, int style, int col, double size= 1.0);

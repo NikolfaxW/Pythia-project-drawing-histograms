@@ -17,16 +17,16 @@
 #include "drawF.h"
 
 int main() {
+
+
     Pythia8::Pythia pythia;
     pythia.readFile("../config1.cmnd");
     pythia.init();
 
     setUpRootStyle();
-    auto can = new TCanvas();
-    can->SetMargin(0.06, 0.02, 0.08, 0.06);
-    auto pTflow = new TH2D("", ";Rapidity #it{y};Azimuth #it{#phi};Jet #it{p}_{T} [GeV]",
-                           400 / 2, -4, 4, 314 / 2, -TMath::Pi(), TMath::Pi());
-
+    auto canvas = new TCanvas();
+    canvas->SetMargin(0.06, 0.02, 0.08, 0.06);
+    auto pTflow = createTH2D();
 
 
 
@@ -34,11 +34,7 @@ int main() {
     int colHS = kBlack, colPos = kRed, colNeg = kBlue;
     int colNeut = kGreen + 3, colPU = kGray + 1;
     TString pdf = "result.pdf";
-    can->Print(pdf + "[");
-
-
-    pTflow->GetYaxis()->SetTitleOffset(0.8);
-    pTflow->GetZaxis()->SetTitleOffset(1.1);
+    canvas->Print(pdf + "[");
 
     std::map<TString, fastjet::JetDefinition> jetDefs;
 
@@ -53,7 +49,7 @@ int main() {
         jetDefs["Anti-#it{k_{t}} jets, #it{R} = " + std::to_string(R)] = fastjet::JetDefinition(
                 fastjet::antikt_algorithm, R, fastjet::E_scheme, fastjet::Best);
 
-    if (doAntiK_t)
+    if (doK_t)
         jetDefs["#it{k_{t}} jets, #it{R} = " + std::to_string(R)] = fastjet::JetDefinition(
                 fastjet::kt_algorithm, R, fastjet::E_scheme, fastjet::Best);
 
@@ -88,10 +84,11 @@ int main() {
         }
 
 
+        canvas->SetLogz(); //log the z axis, so jets are more clearly seen
+        canvas->SetRightMargin(0.14);
 
 
-        can->SetLogz(); //log the z axis, so jets are more clearly seen
-        bool first = true;
+
         for (auto jetDef: jetDefs) {
             pTflow->Reset();
 
@@ -102,53 +99,28 @@ int main() {
             // For each jet:
 
             for (auto jet: jets) {
-
                 // For each particle:
                 for (auto c: jet.constituents()) {
-//                    if (c.pt() > 1e-50) continue;
-
+                    if (c.pt() > 1e-50) continue; //gets rid of bubbles in jets
                     pTflow->Fill(c.rap(), c.phi_std(), jet.pt());
                 }
             }
-            pTflow->GetZaxis()->SetRangeUser(pTmin_jet / 4,                                             //sets up borders of canvas
-                                             pTflow->GetBinContent(pTflow->GetMaximumBin()) * 4);
-            pTflow->GetZaxis()->SetRangeUser(8, 1100);
+
+            pTflow->GetZaxis()->SetRangeUser(pTmin_jet / 4, pTflow->GetBinContent(pTflow->GetMaximumBin()) * 4);
             pTflow->GetZaxis()->SetMoreLogLabels();
             pTflow->Draw("colz");
 
+            drawParticles_histogram(particles_histogram);
 
-            for (auto &p: particles_histogram) {
-                if (!( std::abs(p.y()) < yMax && p.pT() > pTmin_hadron )) continue; //gets things only in canvas
-                if (p.charge() > 0) {
-                    drawParticleMarker(p, 5, colPos, 0.8);
-                } else if (p.charge() < 0) {
-                    drawParticleMarker(p, 5, colNeg, 0.8);
-                } else {
-                    drawParticleMarker(p, 21, colNeut, 0.4);
-                    drawParticleMarker(p, 5, colNeut, 0.8);
-                }
-
-            }
-
-            if (first) {
-                drawLegendBox(0.66, 0.67, 0.85, 0.925);
-
-                drawText(0.675, 0.85, "Stable particles", 12);
-                drawText(0.675, 0.824, "   +    #bf{#minus}    #scale[0.9]{neutral}",
-                         12);
-                drawText(0.675, 0.724, "   +    #bf{#minus}    #scale[0.9]{neutral}",
-                         12);
-                drawMarker(0.683, 0.82, 5, colPos, 0.8);
-                drawMarker(0.717, 0.82, 5, colNeg, 0.8);
-                drawMarker(0.75, 0.82, 21, colNeut, 0.4);
-                drawMarker(0.75, 0.82, 5, colNeut, 0.8);
-            }
-            first = false;
-            can->Print(pdf);
+            drawdrawLegend();
+            canvas->Print(pdf);
         }
     }
-    can->Print(pdf + "]");
+    canvas->Print(pdf + "]");
     printf("Produced %s\n\n", pdf.Data());
+
+    delete pTflow;
+    delete canvas;
 
     return 0;
 }

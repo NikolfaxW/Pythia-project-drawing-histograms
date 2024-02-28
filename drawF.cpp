@@ -1,20 +1,54 @@
-//
-// Created by nikol on 2/21/2024.
-//
-
 #include "drawF.h"
 
 
 
+void drawParticles_histogram(std::vector<Pythia8::Particle> & particles_histogram){
+    int colPos = kRed, colNeg = kBlue, colNeut = kGreen + 3;
+    double yMax = 4;
+    for (auto &p: particles_histogram) {
+        if (!( std::abs(p.y()) < yMax && p.pT() > 4 )) continue; //gets things only in canvas
+        if (p.charge() > 0) {
+            drawParticleMarker(p, 5, colPos, 0.8);
+        } else if (p.charge() < 0) {
+            drawParticleMarker(p, 5, colNeg, 0.8);
+        } else {
+            drawParticleMarker(p, 21, colNeut, 0.4);
+            drawParticleMarker(p, 5, colNeut, 0.8);
+        }
+    }
+}
 
-// Method to print descriptive text to the canvas.
-// (x, y) are relative coordinates (NDC).
+TH2D * createTH2D(){ //don't forget to free the memory
+    int nXBins = 400/2, nYBins = 314/2; //resolutions of 2D histogram
+    double nXMax = 4; //maximal rapidity value
 
+    auto result = new TH2D("", ";Rapidity #it{y};Azimuth #it{#phi};Jet #it{p}_{T} [GeV]",
+                           nXBins, -nXMax, nXMax, nYBins, -TMath::Pi(), TMath::Pi());
 
+    result->GetYaxis()->SetTitleOffset(0.5);//offset of y-axis label "Phi"
+    result->GetZaxis()->SetTitleOffset(1.3); //offset of z-axis label "pT"
+    return result;
 
+}
 
+void drawdrawLegend() {
+    int colPos = kRed, colNeg = kBlue, colNeut = kGreen + 3;
+    double x = 0.67, y = 0.814, dx = 0.19, dy = 0.126; //parameters for the size of the legend box
+    double dxt = 0.001, yl = 0.92, dyl =0.03;  //parameters for text
 
-void setUpRootStyle(){
+    drawLegendBox(x, y, x + dx, y + dy);
+
+    drawText(x + dxt, yl, "Stable particles", 12);
+    drawText(x + dxt, yl - dyl, "    #bf{#minus}    #scale[0.9]{posetive}", 12);
+    drawText(x + dxt, yl - (2*dyl), "    #bf{#minus}    #scale[0.9]{neutral}", 12);
+    drawText(x + dxt, yl - (3*dyl), "    #bf{#minus}    #scale[0.9]{negative}", 12);
+    drawMarker(0.685, yl - dyl, 5, colPos, 0.8);
+    drawMarker(0.685, yl - (2*dyl), 21, colNeut, 0.4);
+    drawMarker(0.685, yl - (2*dyl), 5, colNeut, 0.8);
+    drawMarker(0.685, yl - (3*dyl), 5, colNeg, 0.8);
+}
+
+void setUpRootStyle() {
     gStyle->SetOptTitle(0);
     gStyle->SetOptStat(0);
     gStyle->SetPadTickX(1);
@@ -35,7 +69,6 @@ void drawText(double x, double y, TString txt, int align,
 }
 
 //==========================================================================
-
 // Text to draw a marker at the (y, phi) coordinates of a particle.
 // Absolute coordinates.
 
@@ -49,15 +82,14 @@ void drawParticleMarker(const Pythia8::Particle &p, int style, int col,
 }
 
 //==========================================================================
-
 // Method to draw a marker+text of a particle.
 
 void drawParticleText(const Pythia8::Particle &p, int colourHS) {
     // Draws a marker at (y, phi) of particle. Circle for parton, star
     // for boson.
-    bool isParton =  (std::abs(p.id()) <= 5 || p.id() == 21);
+    bool isParton = (std::abs(p.id()) <= 5 || p.id() == 21);
     int col = colourHS;
-    drawParticleMarker( p, isParton?20:29, col, isParton?0.8:1.2);
+    drawParticleMarker(p, isParton ? 20 : 29, col, isParton ? 0.8 : 1.2);
 
     // Format the name-string of the particle according to ROOT's TLatex.
     // Print the text right under the marker.
@@ -73,7 +105,6 @@ void drawParticleText(const Pythia8::Particle &p, int colourHS) {
 }
 
 //==========================================================================
-
 // Draws a box for text to appear.
 
 void drawLegendBox(double x1, double y1, double x2, double y2) {
@@ -83,7 +114,6 @@ void drawLegendBox(double x1, double y1, double x2, double y2) {
 }
 
 //==========================================================================
-
 // Draw a marker for legend.
 
 void drawMarker(double x, double y, int style, int col, double size) {
@@ -93,5 +123,3 @@ void drawMarker(double x, double y, int style, int col, double size) {
     m->SetNDC(true);
     m->Draw();
 }
-
-//==========================================================================
