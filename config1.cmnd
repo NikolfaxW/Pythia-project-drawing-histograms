@@ -1,5 +1,7 @@
-Main:numberOfEvents = 1
-Main:timesAllowErrors = 20
+Main:numberOfEvents = 10000
+
+
+Main:timesAllowErrors = 100
 
 
 Next:numberCount = 100             ! print message every n events
