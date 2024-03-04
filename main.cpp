@@ -26,7 +26,7 @@ int main() {
     setUpRootStyle();
     auto canvas = new TCanvas();
     canvas->SetMargin(0.06, 0.02, 0.08, 0.06);
-    auto pTflow = createTH2D();
+    auto pTflow = createTH2D(); //! atributes
 
 
     int colHS = kBlack, colPos = kRed, colNeg = kBlue;
@@ -39,7 +39,7 @@ int main() {
 
     double R = 0.3;
     bool doK_t = true, doAntiK_t = true, doCambridgeAachen = false;
-    int pTmin_jet = 25;
+    int pTmin_jet = 5;
     double pTmin_hadron = 1, yMax = 4;
     TString description = "Number of events: " + std::to_string(pythia.mode("Main:numberOfEvents"));
 
@@ -123,7 +123,7 @@ int main() {
         drawText(0.87, 0.96, jetDef.first +
                           Form(", #it{p}_{T} > %.0f GeV", pTmin_jet), 31);
         drawdrawLegend();
-        canvas->Print(pdf + "[" + description + "] " + jetDef.first + ".pdf");;
+        canvas->Print(pdf + "[" + description + "] " + jetDef.first + "2.pdf");;
         printf("Produced %s\n\n", pdf.Data());
     }
 
