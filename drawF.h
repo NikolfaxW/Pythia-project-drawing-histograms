@@ -23,8 +23,8 @@
 
 
 
-void drawParticles_histogram(std::vector<Pythia8::Particle> & particles_histogram);
-TH2D * createTH2D();
+void drawParticles_histogram(std::vector<Pythia8::Particle> & particles_histogram, double minpT);
+TH2D * createTH2D(int nXBins, int nYBins, double nXMax);
 void drawdrawLegend();
 void setUpRootStyle();
 void drawText(double x, double y, TString txt, int align= 11, double tsize= 0.032);

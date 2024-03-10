@@ -23,15 +23,17 @@ int main() {
     pythia.readFile("../config1.cmnd");
     pythia.init();
 
+    int nXBins = 400/2, nYBins = 314/2; //resolutions of 2D histogram
+    double nXMax = 4; //maximal rapidity value
+
+
     setUpRootStyle();
     auto canvas = new TCanvas();
     canvas->SetMargin(0.06, 0.02, 0.08, 0.06);
-    auto pTflow = createTH2D(); //! atributes
+    auto pTflow = createTH2D(nXBins, nYBins, nXMax);
 
-
-    int colHS = kBlack, colPos = kRed, colNeg = kBlue;
-    int colNeut = kGreen + 3, colPU = kGray + 1;
     TString pdf = "../results/";
+
 
 
     std::map<TString, fastjet::JetDefinition> jetDefs;
@@ -39,7 +41,7 @@ int main() {
 
     double R = 0.3;
     bool doK_t = true, doAntiK_t = true, doCambridgeAachen = false;
-    int pTmin_jet = 5;
+    double pTmin_jet = 5;
     double pTmin_hadron = 1, yMax = 4;
     TString description = "Number of events: " + std::to_string(pythia.mode("Main:numberOfEvents"));
 
@@ -117,13 +119,13 @@ int main() {
         pTflow->GetZaxis()->SetMoreLogLabels();
         pTflow->Draw("colz");
 
-        drawParticles_histogram(particles_histogram);
+        drawParticles_histogram(particles_histogram, pTmin_hadron);
 
         drawText(0.06, 0.96, description);
         drawText(0.87, 0.96, jetDef.first +
                           Form(", #it{p}_{T} > %.0f GeV", pTmin_jet), 31);
         drawdrawLegend();
-        canvas->Print(pdf + "[" + description + "] " + jetDef.first + "2.pdf");;
+        canvas->Print(pdf + "[" + description + "] " + jetDef.first + ".pdf");;
         printf("Produced %s\n\n", pdf.Data());
     }
 

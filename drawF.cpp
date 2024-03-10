@@ -2,11 +2,11 @@
 
 
 
-void drawParticles_histogram(std::vector<Pythia8::Particle> & particles_histogram){
+void drawParticles_histogram(std::vector<Pythia8::Particle> & particles_histogram, double minpT){
     int colPos = kRed, colNeg = kBlue, colNeut = kGreen + 3;
     double yMax = 4;
-    for (auto &p: particles_histogram) { //!attributes
-        if (!( std::abs(p.y()) < yMax && p.pT() > 1 )) continue; //gets things only in canvas
+    for (auto &p: particles_histogram) {
+        if (!( std::abs(p.y()) < yMax && p.pT() > minpT )) continue; //gets things only in canvas
         if (p.charge() > 0) {
             drawParticleMarker(p, 5, colPos, 0.8);
         } else if (p.charge() < 0) {
@@ -18,10 +18,7 @@ void drawParticles_histogram(std::vector<Pythia8::Particle> & particles_histogra
     }
 }
 
-TH2D * createTH2D(){ //don't forget to free the memory
-    int nXBins = 400/2, nYBins = 314/2; //resolutions of 2D histogram
-    double nXMax = 4; //maximal rapidity value
-    //!attributes
+TH2D * createTH2D(int nXBins, int nYBins, double nXMax){ //don't forget to free the memory
     auto result = new TH2D("", ";Rapidity #it{y};Azimuth #it{#phi};Jet #it{p}_{T} [GeV]",
                            nXBins, -nXMax, nXMax, nYBins, -TMath::Pi(), TMath::Pi());
 
